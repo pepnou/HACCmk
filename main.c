@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
+#include <math.h>
 //#include <mpi.h>
 
-extern void Step10_orig( int count1, float xxi, float yyi, float zzi, float fsrrmax2, float mp_rsm2, float *xx1, float *yy1, float *zz1, float *mass1, float *dxi, float *dyi, float *dzi/*, int *out_of_range, int *in_range*/ );
+extern void Step10_orig( int count1, float xxi, float fsrrmax2, float mp_rsm2, float *xx1, float *mass1, float *dxi );
 
 #ifdef TIMEBASE
 extern unsigned long long timebase();
@@ -45,8 +46,8 @@ extern double mysecond();
 
 int main( int argc, char *argv[] )
 {
-  static float xx[N], yy[N], zz[N], mass[N], vx1[N], vy1[N], vz1[N];
-  float fsrrmax2, mp_rsm2, fcoeff, dx1, dy1, dz1;
+  static float xx[N], mass[N], v1[N];
+  float fsrrmax2, mp_rsm2, fcoeff, dx1, dx;
 
   char*  M1 = malloc(NC * sizeof(char)), *M2 = malloc(NC * sizeof(char));
   int n, count, i, rank, nprocs;
@@ -96,26 +97,21 @@ int main( int argc, char *argv[] )
       fsrrmax2 = 0.5f; 
       mp_rsm2 = 0.03f;
       dx1 = 1.0f/(float)n;
-      dy1 = 2.0f/(float)n;
-      dz1 = 3.0f/(float)n;
+      //dy1 = 2.0f/(float)n;
+      //dz1 = 3.0f/(float)n;
+      dx = sqrt(14) / (float)n;
       xx[0] = 0.f;
-      yy[0] = 0.f;
-      zz[0] = 0.f;
       mass[0] = 2.f;
       
       for ( i = 1; i < n; i++ )
       {
-          xx[i] = xx[i-1] + dx1;
-          yy[i] = yy[i-1] + dy1;
-          zz[i] = zz[i-1] + dz1;
-          mass[i] = (float)i * 0.01f + xx[i];
+          xx[i] = xx[i-1] + dx;
+          mass[i] = (float)i * (0.01f + dx1);
       }
     
       for ( i = 0; i < n; i++ )
       {
-          vx1[i] = 0.f;
-          vy1[i] = 0.f;
-          vz1[i] = 0.f;
+          v1[i] = 0.f;
       }
     
       /* Data preparation done */
@@ -131,25 +127,13 @@ int main( int argc, char *argv[] )
 #else
       double t1 = mysecond();
 #endif
-    //int out_of_range = 0, in_range = 0;
-    #pragma omp parallel for private( dx1, dy1, dz1 )
+    #pragma omp parallel for private( dx )
       for ( i = 0; i < count; ++i)
       {
-        int tmp1 = 0, tmp2 = 0;
-        Step10_orig( n, xx[i], yy[i], zz[i], fsrrmax2, mp_rsm2, xx, yy, zz, mass, &dx1, &dy1, &dz1/*, &tmp1, &tmp2*/ );
+        Step10_orig( n, xx[i], fsrrmax2, mp_rsm2, xx, mass, &dx );
     
-        vx1[i] = /*vx1[i] +*/ dx1 * fcoeff;
-        vy1[i] = /*vy1[i] +*/ dy1 * fcoeff;
-        vz1[i] = /*vz1[i] +*/ dz1 * fcoeff;
-
-/*#pragma omp critical
-        {
-          out_of_range += tmp1;
-          in_range += tmp2;
-        }*/
+        v1[i] = /*vx1[i] +*/ dx * fcoeff;
       }
-
-      //fprintf(stderr, "out of range : %d%%\n", out_of_range * 100 / (out_of_range + in_range));
 
 #ifdef TIMEBASE
       tm2 = timebase();
@@ -160,7 +144,7 @@ int main( int argc, char *argv[] )
       validation = 0.;
       for ( i = 0; i < n; i++ )
       {
-         validation = validation + ( vx1[i] + vy1[i] + vz1[i] );
+         validation = validation + ( v1[i] * v1[i] );
       }
 
       final = final + validation;
@@ -192,7 +176,8 @@ int main( int argc, char *argv[] )
 
   printf(   "Result validation: %18.8lf\n", final );
   //printf(   "Result expected  : 6636045675.12190628\n" );
-  printf(   "Result expected  : 6636045682.40903854\n" );
+  //printf(   "Result expected  : 6636045682.40903854\n" );
+  printf(   "Result expected  : 120488201380407.35937500\n" );
   
   //MPI_Finalize();
 
