@@ -5,6 +5,7 @@
 //#include <mpi.h>
 
 extern void Step10_orig( int count1, float xxi, float fsrrmax2, float mp_rsm2, float *xx1, float *mass1, float *dxi );
+//extern void Step10_orig( int count1, int i, float fsrrmax2, float mp_rsm2, float *xx1, float *mass1, float *dxi, int iter);
 
 #ifdef TIMEBASE
 extern unsigned long long timebase();
@@ -43,6 +44,7 @@ extern double mysecond();
 #define N 15000      /* Vector length, must be divisible by 4  15000 */
 
 #define ETOL 1.e-4  /* Tolerance for correctness */
+
 
 int main( int argc, char *argv[] )
 {
@@ -91,7 +93,7 @@ int main( int argc, char *argv[] )
 
   for ( n = 400; n < N; n = n + 20 ) 
   {
-    printf("iter %d\n", n);
+      //printf("iter %d\n", n);
       /* Initial data preparation */
       fcoeff = 0.23f;  
       fsrrmax2 = 0.5f; 
@@ -127,10 +129,15 @@ int main( int argc, char *argv[] )
 #else
       double t1 = mysecond();
 #endif
-    #pragma omp parallel for private( dx )
+    #pragma omp parallel for private( dx ) schedule(dynamic)
       for ( i = 0; i < count; ++i)
       {
-        Step10_orig( n, xx[i], fsrrmax2, mp_rsm2, xx, mass, &dx );
+        //Step10_orig( n, i, fsrrmax2, mp_rsm2, xx, mass, &dx , n);
+        Step10_orig( n, i, fsrrmax2, mp_rsm2, xx, mass, &dx);
+
+        if(n == 400 && i == 0) {
+          printf("%f\n", dx);
+        }
     
         v1[i] = /*vx1[i] +*/ dx * fcoeff;
       }
