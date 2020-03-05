@@ -24,7 +24,7 @@ ifeq "$(PLAT)" "gnu"
 CC = gcc
 LD = $(CC) 
 LIBS = -lm
-CFLAGS_KERNEL = -O2 -g -Wall -funroll-loops -march=skylake
+CFLAGS_KERNEL = -Ofast -g -Wall -funroll-loops -march=skylake
 CFLAGS_MAIN   = -O0 -g -fopenmp -Wall
 LDFLAGS       = -fopenmp
 endif
